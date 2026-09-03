@@ -3,216 +3,544 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
 
-var (
-	// Die Adresse des zweiten Containers.
+const (
+	// Adresse des zweiten Containers. / Address of the second container.
 	dataProviderHost = "data-provider-svc:9090"
-	// Das Passwort, das in das Volume geschrieben wird.
+	// Passwort, das in das Volume geschrieben wird. / Password written into the volume.
 	password = "SUPER_GEHEIM_123"
+	// Wert des Labels ctf.data-provider.host — die Antwort für Level 2.
+	providerLabelValue = "data-provider-svc"
+	// Ordner, der in Level 4 gemountet werden muss.
+	secretsDir = "/secrets"
+
+	cookieLang     = "ctf_lang"
+	cookieProgress = "ctf_progress"
 )
 
-// main ist der Einstiegspunkt des Programms.
+// Zwischen-Flags pro Level. Level 5 gibt es nur im Terminal.
+var levelFlags = map[int]string{
+	1: "FLAG{L1_P0RT_G3FUNDEN}",
+	2: "FLAG{L2_L4B3L_G3L3S3N}",
+	3: "FLAG{L3_N3TZW3RK_ST3HT}",
+	4: "FLAG{L4_TR3S0R_G3KN4CKT}",
+}
+
+const finalFlag = "FLAG{D0CK3R_PR0F1_MIT_FLAG}"
+
+// providerStatus beschreibt, warum der Data-Provider (nicht) erreichbar ist.
+type providerStatus int
+
+const (
+	providerOK      providerStatus = iota // Verbindung steht
+	providerDNS                           // Name nicht auflösbar -> Netzwerkproblem
+	providerRefused                       // Name bekannt, aber niemand antwortet
+)
+
 func main() {
-	// Schritt 8: Füge eine Kommandozeilen-Flag hinzu, um die finale Flagge anzuzeigen.
-	showFlag := flag.Bool("show-flag", false, "Zeigt die finale Flagge an und beendet das Programm.")
+	showFlag := flag.Bool("show-flag", false, "Zeigt die finale Flagge an / shows the final flag")
 	flag.Parse()
 
 	if *showFlag {
-		// Prüfe, ob der Prozess in einem interaktiven Terminal läuft.
-		stat, err := os.Stdin.Stat()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Fehler: Konnte den Status des Terminals nicht ermitteln (Grund: %v).\n", err)
-			os.Exit(1)
-		}
-
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			// Kein Terminal: Gib eine Fehlermeldung aus und beende.
-			fmt.Fprintln(os.Stderr, "Fehler: Dies muss in einem interaktiven Terminal ausgeführt werden.")
-			fmt.Fprintln(os.Stderr, "Benutze 'docker exec -it ...'.")
-			os.Exit(1)
-		}
-
-		// Terminal ist vorhanden: Warte auf die Eingabe.
-		fmt.Println("Du bist fast am Ziel! Drücke ENTER, um die Flagge anzuzeigen.")
-		
-		// Lese die Eingabe. Wenn der Input-Kanal geschlossen ist (wie bei `docker exec` ohne -i),
-		// gibt dieser Befehl sofort einen Fehler zurück.
-		_, err = bufio.NewReader(os.Stdin).ReadByte()
-		if err != nil {
-			// Wenn ein Fehler auftritt (z.B. EOF), gib eine spezifische Fehlermeldung aus.
-			fmt.Fprintf(os.Stderr, "\nFehler: Konnte keine Eingabe vom Terminal lesen (Grund: %v).\n", err)
-			fmt.Fprintln(os.Stderr, "Stelle sicher, dass du eine interaktive Sitzung mit '-it' gestartet hast.")
-			os.Exit(1)
-		}
-		fmt.Println("FLAG{D0CK3R_PR0F1_MIT_FLAG}")
+		runShowFlag()
 		return
 	}
 
-	// Schritt 1: Ein Hinweis, der zu `docker inspect` führt.
-	log.Println("HINWEIS: Ich lausche auf einem geheimen Port. Finde ihn mit 'docker container inspect DEIN_CONTAINER' und schau unter 'Config.ExposedPorts'.")
-
-	// Schritt 6: Schreibe das Passwort in das Volume, falls es gemountet ist.
+	printStartupHints()
 	writePasswordToVolume()
 
-	// Definiere den Handler für die Hauptroute "/".
 	http.HandleFunc("/", rootHandler)
 
-	// Starte den Webserver auf einem nicht-standard Port.
-	fmt.Println("Server startet auf Port 8989...")
+	// Bewusst ohne Portnummer: die soll in Level 1 selbst gefunden werden.
+	fmt.Println("Server laeuft. / Server is running.")
 	if err := http.ListenAndServe(":8989", nil); err != nil {
-		log.Fatalf("Konnte den Server nicht starten: %s\n", err)
+		log.Fatalf("Konnte den Server nicht starten / could not start server: %s\n", err)
 	}
 }
 
-// writePasswordToVolume prüft, ob das Verzeichnis /secrets existiert und schreibt die Passwortdatei.
+// runShowFlag ist Level 5: die Flagge gibt es nur in einem echten Terminal.
+func runShowFlag() {
+	if !stdinIsTerminal() {
+		printNoTTYHelp()
+		os.Exit(1)
+	}
+
+	fmt.Println("Du bist fast am Ziel! Drücke ENTER, um die Flagge anzuzeigen.")
+	fmt.Println("You are almost there! Press ENTER to reveal the flag.")
+
+	if _, err := bufio.NewReader(os.Stdin).ReadByte(); err != nil {
+		printNoTTYHelp()
+		os.Exit(1)
+	}
+
+	fmt.Println()
+	fmt.Println("  " + finalFlag)
+	fmt.Println()
+	fmt.Println("Glückwunsch, du hast alle Level geschafft! 🐳")
+	fmt.Println("Congratulations, you completed every level! 🐳")
+}
+
+// printNoTTYHelp erklärt, was fehlt — und nennt den kompletten richtigen Befehl.
+func printNoTTYHelp() {
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "  Fast! Mir fehlt ein echtes Terminal.")
+	fmt.Fprintln(os.Stderr, "  Almost! I am missing a real terminal.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "  Benutze genau diesen Befehl / use exactly this command:")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "      docker exec -it ctf-main /app/app --show-flag")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "  Das -it ist der Unterschied: i = interactive, t = terminal.")
+	fmt.Fprintln(os.Stderr, "  The -it is what matters: i = interactive, t = terminal.")
+	fmt.Fprintln(os.Stderr, "")
+}
+
+// printStartupHints ist der einzige Hinweis fuer Level 1.
+//
+// WICHTIG: Die Spieler bekommen nur den Image-Namen genannt - kein Repository,
+// keine Anleitung, keine Skripte. Alles, was sie brauchen, muss also hier oder
+// spaeter auf der Webseite stehen. Dieser Text ist der komplette Einstieg.
+func printStartupHints() {
+	lines := []string{
+		"",
+		"  ==================================================================",
+		"   Docker CTF  -  Level 1 von 5:  Der geheime Port",
+		"   Docker CTF  -  Level 1 of 5:   The Secret Port",
+		"  ==================================================================",
+		"",
+		"  --- DEUTSCH ------------------------------------------------------",
+		"",
+		"  Willkommen! Du loest 5 Level und bekommst fuer jedes eine Flag.",
+		"  Ab Level 2 fuehrt dich eine Webseite weiter - die erreichst du",
+		"  aber erst, wenn du meinen Port gefunden und freigegeben hast.",
+		"",
+		"   1) Starte mich im Hintergrund und gib mir einen Namen:",
+		"        docker run -d --name ctf-main matixmedia/docker-ctf",
+		"",
+		"      (Laeuft dieses Fenster gerade fest? Dann hast du mich ohne -d",
+		"       gestartet. Druecke Strg+C und benutze den Befehl oben.)",
+		"",
+		"   2) Finde heraus, auf welchem Port ich lausche:",
+		"        docker inspect --format '{{.Config.ExposedPorts}}' ctf-main",
+		"",
+		"   3) Starte mich neu und gib den Port frei.",
+		"      PORT ist die Zahl aus Schritt 2:",
+		"        docker stop ctf-main && docker rm ctf-main",
+		"        docker run -d --name ctf-main -p PORT:PORT matixmedia/docker-ctf",
+		"",
+		"   4) Oeffne im Browser:  http://localhost:PORT",
+		"",
+		"  MERKE: Einen Containernamen gibt es nur einmal. Vor jedem Neustart",
+		"  mit gleichem Namen erst 'docker stop NAME && docker rm NAME'.",
+		"  Weisst du meinen Namen nicht mehr? 'docker ps' zeigt ihn dir.",
+		"",
+		"  --- ENGLISH ------------------------------------------------------",
+		"",
+		"  Welcome! You solve 5 levels and get a flag for each one.",
+		"  From level 2 on, a web page guides you - but you can only reach it",
+		"  once you have found and published my port.",
+		"",
+		"   1) Start me in the background and give me a name:",
+		"        docker run -d --name ctf-main matixmedia/docker-ctf",
+		"",
+		"      (Is this window stuck? Then you started me without -d.",
+		"       Press Ctrl+C and use the command above.)",
+		"",
+		"   2) Find out which port I am listening on:",
+		"        docker inspect --format '{{.Config.ExposedPorts}}' ctf-main",
+		"",
+		"   3) Restart me and publish the port.",
+		"      PORT is the number from step 2:",
+		"        docker stop ctf-main && docker rm ctf-main",
+		"        docker run -d --name ctf-main -p PORT:PORT matixmedia/docker-ctf",
+		"",
+		"   4) Open in your browser:  http://localhost:PORT",
+		"",
+		"  REMEMBER: a container name exists only once. Before restarting with",
+		"  the same name, run 'docker stop NAME && docker rm NAME' first.",
+		"  Forgot my name? 'docker ps' shows it.",
+		"",
+		"  ==================================================================",
+		"",
+	}
+	for _, l := range lines {
+		fmt.Println(l)
+	}
+}
+
+// writePasswordToVolume schreibt das Passwort, sobald /secrets existiert (Level 4).
 func writePasswordToVolume() {
-	secretsDir := "/secrets"
-	if _, err := os.Stat(secretsDir); !os.IsNotExist(err) {
-		filePath := filepath.Join(secretsDir, "password.txt")
-		err := os.WriteFile(filePath, []byte(password), 0644)
-		if err != nil {
-			log.Printf("Konnte Passwort nicht in Volume schreiben: %v", err)
-		} else {
-			log.Printf("Passwort erfolgreich nach %s geschrieben.", filePath)
+	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
+		return
+	}
+	filePath := filepath.Join(secretsDir, "password.txt")
+	if err := os.WriteFile(filePath, []byte(password), 0644); err != nil {
+		log.Printf("Konnte Passwort nicht in Volume schreiben / could not write password: %v", err)
+		return
+	}
+	log.Printf("Passwort nach %s geschrieben / password written to %s", filePath, filePath)
+}
+
+// ---------------------------------------------------------------- Zustand
+
+// checkProvider prueft die Verbindung und unterscheidet die Fehlerursache.
+func checkProvider() providerStatus {
+	resp, err := http.Get("http://" + dataProviderHost + "/ping")
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			return providerOK
+		}
+		return providerRefused
+	}
+
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) || strings.Contains(err.Error(), "no such host") {
+		return providerDNS
+	}
+	return providerRefused
+}
+
+func volumeMounted() bool {
+	_, err := os.Stat(secretsDir)
+	return err == nil
+}
+
+func langFrom(r *http.Request) Lang {
+	if q := r.URL.Query().Get("lang"); q != "" {
+		return ParseLang(q)
+	}
+	if c, err := r.Cookie(cookieLang); err == nil {
+		return ParseLang(c.Value)
+	}
+	return LangDE
+}
+
+func progressFrom(r *http.Request) int {
+	c, err := r.Cookie(cookieProgress)
+	if err != nil {
+		return 0
+	}
+	n, err := strconv.Atoi(c.Value)
+	if err != nil || n < 0 || n > 5 {
+		return 0
+	}
+	return n
+}
+
+func setCookie(w http.ResponseWriter, name, value string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:   name,
+		Value:  value,
+		Path:   "/",
+		MaxAge: 60 * 60 * 24 * 30,
+	})
+}
+
+// ---------------------------------------------------------------- Handler
+
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	lang := langFrom(r)
+	setCookie(w, cookieLang, string(lang))
+
+	stored := progressFrom(r)
+	progress := stored
+	status := checkProvider()
+
+	// Level 3 ist automatisch geschafft, sobald die Verbindung steht.
+	if status == providerOK && progress < 3 {
+		progress = 3
+	}
+	// Wer diese Seite sieht, hat Level 1 hinter sich.
+	if progress < 1 {
+		progress = 1
+	}
+
+	var justUnlocked int
+	var wrongKey string
+
+	if r.Method == http.MethodPost {
+		switch r.FormValue("step") {
+		case "2":
+			answer := strings.TrimSpace(r.FormValue("answer"))
+			if strings.EqualFold(answer, providerLabelValue) {
+				if progress < 2 {
+					progress = 2
+					justUnlocked = 2
+				}
+			} else if answer != "" {
+				wrongKey = "l2.wrong"
+			}
+		case "4":
+			submitted := strings.TrimSpace(r.FormValue("password"))
+			ok, err := verifyPassword(submitted, lang)
+			switch {
+			case err != nil:
+				wrongKey = "l3.diag.refused"
+			case ok:
+				if progress < 4 {
+					progress = 4
+					justUnlocked = 4
+				}
+			case submitted != "":
+				wrongKey = "l4.wrong"
+			}
 		}
 	}
+
+	// Level 3 frisch geschafft? Nur beim ersten Mal hervorheben.
+	if justUnlocked == 0 && status == providerOK && stored < 3 {
+		justUnlocked = 3
+	}
+
+	setCookie(w, cookieProgress, strconv.Itoa(progress))
+	render(w, lang, progress, status, justUnlocked, wrongKey)
 }
 
-// rootHandler behandelt Anfragen und die Passworteingabe.
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-	// Wenn ein Passwort gesendet wird, verarbeite es.
-	if r.Method == http.MethodPost {
-		handlePasswordSubmission(w, r)
-		return
-	}
+// verifyPassword laesst das Passwort vom Data-Provider pruefen (Level 4).
+func verifyPassword(submitted string, lang Lang) (bool, error) {
+	form := url.Values{}
+	form.Set("password", submitted)
+	form.Set("lang", string(lang))
 
-	// Schritt 4 & 5: Prüfe die Verbindung zum Data-Provider.
-	resp, err := http.Get("http://" + dataProviderHost + "/ping")
-	connectionOK := err == nil && resp.StatusCode == http.StatusOK
-	if err == nil {
-		resp.Body.Close()
-	}
-
-	pageData := struct {
-		ConnectionOK bool
-		Message      string
-	}{
-		ConnectionOK: connectionOK,
-		Message:      "",
-	}
-
-	// Lade die Webseite.
-	tmpl, err := template.New("index").Parse(getIndexTemplate())
+	apiURL := "http://" + dataProviderHost + "/verify"
+	req, err := http.NewRequest(http.MethodPost, apiURL, bytes.NewBufferString(form.Encode()))
 	if err != nil {
-		http.Error(w, "Konnte Template nicht parsen", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.Execute(w, pageData)
-}
-
-// handlePasswordSubmission verarbeitet das gesendete Passwort.
-func handlePasswordSubmission(w http.ResponseWriter, r *http.Request) {
-	submittedPassword := r.FormValue("password")
-
-	// Schritt 7: Sende das Passwort an den Data-Provider zur Verifizierung.
-	apiURL := fmt.Sprintf("http://%s/verify", dataProviderHost)
-	postBody := []byte(fmt.Sprintf("password=%s", submittedPassword))
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(postBody))
-	if err != nil {
-		http.Error(w, "Fehler beim Erstellen der Anfrage", http.StatusInternalServerError)
-		return
+		return false, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		http.Error(w, "Fehler bei der Verbindung zum Data-Provider", http.StatusInternalServerError)
-		return
+		return false, err
 	}
 	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
 
-	body, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode == http.StatusOK, nil
+}
 
-	// Zeige die Antwort vom Data-Provider an.
-	pageData := struct {
-		ConnectionOK bool
-		Message      string
-	}{
-		ConnectionOK: true,
-		Message:      string(body),
+// ---------------------------------------------------------------- Rendering
+
+type levelDot struct {
+	Number int
+	State  string // "done" | "current" | "todo"
+}
+
+type earnedFlag struct {
+	Level int
+	Title string
+	Text  template.HTML
+	Value string
+	Fresh bool
+}
+
+type pageData struct {
+	Lang       Lang
+	OtherLang  Lang
+	Dots       []levelDot
+	Flags      []earnedFlag
+	Connected  bool
+	Diagnosis  template.HTML
+	Level      int
+	LevelTitle string
+	Goal       template.HTML
+	Concept    template.HTML
+	Hint1      template.HTML
+	Hint2      template.HTML
+	Hint3      template.HTML
+	Check      template.HTML
+	Bonus      template.HTML
+	ShowForm2  bool
+	ShowForm4  bool
+	Mounted    bool
+	MountNote  template.HTML
+	Error      template.HTML
+
+	// Statische Beschriftungen
+	Brand          string
+	LangSwitch     string
+	ProgressWord   string
+	LevelWord      string
+	GoalLabel      string
+	ConceptLabel   string
+	CheckLabel     string
+	Hint1Label     string
+	Hint2Label     string
+	Hint3Label     string
+	FlagUnlocked   string
+	FlagNote       string
+	CleanupTitle   string
+	CleanupBody    template.HTML
+	FooterProgress string
+	FooterReset    string
+	FooterResetCmd string
+	DoneTitle      string
+	DoneBody       template.HTML
+	L1Done         template.HTML
+	Question       string
+	Placeholder2   string
+	Submit2        string
+	PwLabel        string
+	Placeholder4   string
+	Submit4        string
+	HintsLabel     string
+	ConnOK         string
+	ConnBad        string
+	ConnTitle      string
+}
+
+// currentLevel leitet aus Fortschritt und Verbindungszustand das anzuzeigende Level ab.
+// Bricht die Verbindung wieder weg, landet man automatisch zurueck bei Level 3.
+func currentLevel(progress int, status providerStatus) int {
+	if status != providerOK {
+		if progress < 2 {
+			return 2
+		}
+		return 3
+	}
+	if progress < 4 {
+		return 4
+	}
+	return 5
+}
+
+func render(w http.ResponseWriter, lang Lang, progress int, status providerStatus, justUnlocked int, wrongKey string) {
+	level := currentLevel(progress, status)
+
+	dots := make([]levelDot, 0, 5)
+	for i := 1; i <= 5; i++ {
+		state := "todo"
+		switch {
+		case i <= progress:
+			state = "done"
+		case i == level:
+			state = "current"
+		}
+		dots = append(dots, levelDot{Number: i, State: state})
 	}
 
-	tmpl, err := template.New("index").Parse(getIndexTemplate())
+	flags := make([]earnedFlag, 0, 4)
+	for i := 1; i <= progress && i <= 4; i++ {
+		textKey := fmt.Sprintf("l%d.flagtext", i)
+		if i == 1 {
+			textKey = "l1.learned"
+		}
+		flags = append(flags, earnedFlag{
+			Level: i,
+			Title: T(lang, fmt.Sprintf("l%d.title", i)),
+			Text:  TH(lang, textKey),
+			Value: levelFlags[i],
+			Fresh: i == justUnlocked,
+		})
+	}
+
+	data := pageData{
+		Lang:      lang,
+		OtherLang: lang.Other(),
+		Dots:      dots,
+		Flags:     flags,
+		Connected: status == providerOK,
+		Level:     level,
+		Mounted:   volumeMounted(),
+
+		Brand:          T(lang, "brand"),
+		LangSwitch:     T(lang, "lang.switch"),
+		ProgressWord:   T(lang, "progress.label"),
+		LevelWord:      T(lang, "level.word"),
+		GoalLabel:      T(lang, "goal.label"),
+		ConceptLabel:   T(lang, "concept.label"),
+		CheckLabel:     T(lang, "check.label"),
+		Hint1Label:     T(lang, "hint.1"),
+		Hint2Label:     T(lang, "hint.2"),
+		Hint3Label:     T(lang, "hint.3"),
+		FlagUnlocked:   T(lang, "flag.unlocked"),
+		FlagNote:       T(lang, "flag.note"),
+		CleanupTitle:   T(lang, "cleanup.title"),
+		CleanupBody:    TH(lang, "cleanup.body"),
+		FooterProgress: T(lang, "footer.progress"),
+		FooterReset:    T(lang, "footer.reset"),
+		FooterResetCmd: T(lang, "footer.resetcmd"),
+		DoneTitle:      T(lang, "done.title"),
+		DoneBody:       TH(lang, "done.body"),
+		L1Done:         TH(lang, "l1.done"),
+		Question:       T(lang, "l2.question"),
+		Placeholder2:   T(lang, "l2.placeholder"),
+		Submit2:        T(lang, "l2.submit"),
+		PwLabel:        T(lang, "l4.pwlabel"),
+		Placeholder4:   T(lang, "l4.placeholder"),
+		Submit4:        T(lang, "l4.submit"),
+		HintsLabel:     T(lang, "hints.label"),
+		ConnOK:         T(lang, "conn.ok"),
+		ConnBad:        T(lang, "conn.bad"),
+	}
+
+	// Der Hostname des Data-Providers IST die Loesung von Level 2. Vor Level 3
+	// darf ihn also weder die Statusbox noch die Diagnose noch der Aufraeum-
+	// Befehl im Footer verraten.
+	revealProvider := level >= 3
+	if revealProvider {
+		data.ConnTitle = providerLabelValue
+		switch status {
+		case providerDNS:
+			data.Diagnosis = TH(lang, "l3.diag.dns")
+		case providerRefused:
+			data.Diagnosis = TH(lang, "l3.diag.refused")
+		}
+	} else {
+		data.ConnTitle = T(lang, "conn.anon.title")
+		data.ConnBad = T(lang, "conn.anon.bad")
+		data.FooterResetCmd = T(lang, "footer.resetcmd.l2")
+	}
+
+	prefix := fmt.Sprintf("l%d.", level)
+	data.LevelTitle = T(lang, prefix+"title")
+	data.Goal = TH(lang, prefix+"goal")
+	data.Concept = TH(lang, prefix+"concept")
+	data.Hint1 = TH(lang, prefix+"hint1")
+	data.Hint2 = TH(lang, prefix+"hint2")
+	data.Hint3 = TH(lang, prefix+"hint3")
+	data.Check = TH(lang, prefix+"check")
+
+	switch level {
+	case 2:
+		data.ShowForm2 = true
+	case 4:
+		data.ShowForm4 = true
+		if data.Mounted {
+			data.MountNote = TH(lang, "l4.mounted.yes")
+		} else {
+			data.MountNote = TH(lang, "l4.mounted.no")
+		}
+	case 5:
+		data.Bonus = TH(lang, "l5.bonus")
+	}
+
+	if wrongKey != "" {
+		data.Error = TH(lang, wrongKey)
+	}
+
+	tmpl, err := template.New("index").Parse(indexTemplate)
 	if err != nil {
-		http.Error(w, "Konnte Template nicht parsen", http.StatusInternalServerError)
+		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.Execute(w, pageData)
-}
-
-// getIndexTemplate gibt das HTML-Template für die Webseite zurück.
-func getIndexTemplate() string {
-	return `
-	<!DOCTYPE html>
-	<html>
-	<head>
-		<title>Docker CTF</title>
-		<style>
-			body { font-family: sans-serif; background-color: #f0f0f0; color: #333; max-width: 800px; margin: 40px auto; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-			h1 { color: #005a9e; }
-			code { background-color: #e0e0e0; padding: 2px 6px; border-radius: 4px; }
-			.hint { border-left: 4px solid #ffc107; padding: 10px; margin-top: 20px; }
-			.success { border-left: 4px solid #28a745; padding: 10px; margin-top: 20px; margin-bottom: 20px; }
-			.error { border-left: 4px solid #dc3545; padding: 10px; margin-top: 20px; }
-			input[type=text], button { padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; width: calc(100% - 22px); }
-			button { background-color: #007bff; color: white; cursor: pointer; width: 100%; }
-		</style>
-	</head>
-	<body>
-		<h1>Willkommen beim Docker CTF!</h1>
-		
-		{{if .ConnectionOK}}
-			<div class="success">
-				<strong>Verbindung zum Data-Provider erfolgreich!</strong>
-				<p>Jetzt brauchst du das richtige Passwort, um den letzten Hinweis zu erhalten.</p>
-				<p><strong>Hinweis:</strong> Ich habe das Passwort an einen sicheren Ort geschrieben: <code>/secrets/password.txt</code>. Du musst diesen Ordner nur von deinem eigenen Computer aus zugänglich machen. Starte den Container neu und benutze die <code>-v</code> Option, um ein Volume zu mounten. Z.B.: <code>-v $(pwd)/secrets:/secrets</code></p>
-			</div>
-
-			<form method="POST" action="/">
-				<label for="password">Passwort:</label><br>
-				<input type="text" id="password" name="password"><br>
-				<button type="submit">Absenden</button>
-			</form>
-
-			{{if .Message}}
-				<div class="hint">
-					<h2>Antwort vom Data-Provider:</h2>
-					<p><code>{{.Message}}</code></p>
-				</div>
-			{{end}}
-
-		{{else}}
-			<div class="error">
-				<strong>Verbindung zum Data-Provider fehlgeschlagen!</strong>
-				<p>Ich muss mit meinem Freund, dem Data-Provider, kommunizieren, aber ich kann ihn nicht erreichen. Das Image für den Data-Provider ist in der Docker Registry unter dem Namen <code>matixmedia/docker-ctf-data-provider:latest</code> zu finden.</p>
-				<p><strong>Hinweis:</strong> Container im Standard-Netzwerk können sich nicht über ihre Namen erreichen. Du musst ein eigenes Docker-Netzwerk erstellen (<code>docker network create ctf-net</code>) und beide Container in diesem Netzwerk starten (<code>--network ctf-net</code>).</p>
-				<p>Den Hostnamen des Data-Providers findest du übrigens als Label in meinen Metadaten. Benutze <code>docker container inspect DEIN_CONTAINER_NAME</code> und suche nach <code>ctf.data-provider.host</code>.</p>
-			</div>
-		{{end}}
-	</body>
-	</html>
-	`
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("render error: %v", err)
+	}
 }
