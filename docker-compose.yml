@@ -10,12 +10,16 @@ services:
   data-provider-svc:
     build: ./data-provider-app
     image: matixmedia/docker-ctf-data-provider:latest
+    # Immer lokal bauen. Ohne das holt Compose das (alte) Image aus der Registry
+    # und ueberschreibt damit den lokalen Build.
+    pull_policy: build
     container_name: data-provider-svc
     networks: [ctf-net]
 
   ctf-main:
     build: ./main-app
     image: matixmedia/docker-ctf-main:latest
+    pull_policy: build
     container_name: ctf-main
     depends_on: [data-provider-svc]
     ports:
