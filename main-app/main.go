@@ -109,31 +109,72 @@ func printNoTTYHelp() {
 	fmt.Fprintln(os.Stderr, "")
 }
 
-// printStartupHints ist der einzige Hinweis fuer Level 1 — hier gibt es noch keine Webseite.
+// printStartupHints ist der einzige Hinweis fuer Level 1.
+//
+// WICHTIG: Die Spieler bekommen nur den Image-Namen genannt - kein Repository,
+// keine Anleitung, keine Skripte. Alles, was sie brauchen, muss also hier oder
+// spaeter auf der Webseite stehen. Dieser Text ist der komplette Einstieg.
 func printStartupHints() {
 	lines := []string{
 		"",
 		"  ==================================================================",
-		"    Docker CTF — Level 1: Der geheime Port / The Secret Port",
+		"   Docker CTF  -  Level 1 von 5:  Der geheime Port",
+		"   Docker CTF  -  Level 1 of 5:   The Secret Port",
 		"  ==================================================================",
 		"",
-		"  DE  Ich lausche auf einem geheimen Port, aber von aussen kommst du",
-		"      noch nicht an mich heran. Finde den Port heraus:",
+		"  --- DEUTSCH ------------------------------------------------------",
 		"",
-		"          docker inspect --format '{{.Config.ExposedPorts}}' ctf-main",
+		"  Willkommen! Du loest 5 Level und bekommst fuer jedes eine Flag.",
+		"  Ab Level 2 fuehrt dich eine Webseite weiter - die erreichst du",
+		"  aber erst, wenn du meinen Port gefunden und freigegeben hast.",
 		"",
-		"      Dann starte mich neu und gib den Port frei (-p PORT:PORT).",
-		"      Denk daran: vorher aufraeumen mit 'docker rm'!",
+		"   1) Starte mich im Hintergrund und gib mir einen Namen:",
+		"        docker run -d --name ctf-main matixmedia/docker-ctf",
 		"",
-		"  EN  I am listening on a secret port, but you cannot reach me from",
-		"      the outside yet. Find the port:",
+		"      (Laeuft dieses Fenster gerade fest? Dann hast du mich ohne -d",
+		"       gestartet. Druecke Strg+C und benutze den Befehl oben.)",
 		"",
-		"          docker inspect --format '{{.Config.ExposedPorts}}' ctf-main",
+		"   2) Finde heraus, auf welchem Port ich lausche:",
+		"        docker inspect --format '{{.Config.ExposedPorts}}' ctf-main",
 		"",
-		"      Then restart me and publish the port (-p PORT:PORT).",
-		"      Remember to clean up with 'docker rm' first!",
+		"   3) Starte mich neu und gib den Port frei.",
+		"      PORT ist die Zahl aus Schritt 2:",
+		"        docker stop ctf-main && docker rm ctf-main",
+		"        docker run -d --name ctf-main -p PORT:PORT matixmedia/docker-ctf",
 		"",
-		"  Workbook:  docs/WORKBOOK.de.md  ·  docs/WORKBOOK.en.md",
+		"   4) Oeffne im Browser:  http://localhost:PORT",
+		"",
+		"  MERKE: Einen Containernamen gibt es nur einmal. Vor jedem Neustart",
+		"  mit gleichem Namen erst 'docker stop NAME && docker rm NAME'.",
+		"  Weisst du meinen Namen nicht mehr? 'docker ps' zeigt ihn dir.",
+		"",
+		"  --- ENGLISH ------------------------------------------------------",
+		"",
+		"  Welcome! You solve 5 levels and get a flag for each one.",
+		"  From level 2 on, a web page guides you - but you can only reach it",
+		"  once you have found and published my port.",
+		"",
+		"   1) Start me in the background and give me a name:",
+		"        docker run -d --name ctf-main matixmedia/docker-ctf",
+		"",
+		"      (Is this window stuck? Then you started me without -d.",
+		"       Press Ctrl+C and use the command above.)",
+		"",
+		"   2) Find out which port I am listening on:",
+		"        docker inspect --format '{{.Config.ExposedPorts}}' ctf-main",
+		"",
+		"   3) Restart me and publish the port.",
+		"      PORT is the number from step 2:",
+		"        docker stop ctf-main && docker rm ctf-main",
+		"        docker run -d --name ctf-main -p PORT:PORT matixmedia/docker-ctf",
+		"",
+		"   4) Open in your browser:  http://localhost:PORT",
+		"",
+		"  REMEMBER: a container name exists only once. Before restarting with",
+		"  the same name, run 'docker stop NAME && docker rm NAME' first.",
+		"  Forgot my name? 'docker ps' shows it.",
+		"",
+		"  ==================================================================",
 		"",
 	}
 	for _, l := range lines {
@@ -331,34 +372,35 @@ type pageData struct {
 	Error      template.HTML
 
 	// Statische Beschriftungen
-	Brand        string
-	LangSwitch   string
-	ProgressWord string
-	LevelWord    string
-	GoalLabel    string
-	ConceptLabel string
-	CheckLabel   string
-	Hint1Label   string
-	Hint2Label   string
-	Hint3Label   string
-	FlagUnlocked string
-	FlagNote     string
-	CleanupTitle string
-	CleanupBody  template.HTML
-	WorkbookNote template.HTML
-	StuckNote    template.HTML
-	DoneTitle    string
-	DoneBody     template.HTML
-	L1Done       template.HTML
-	Question     string
-	Placeholder2 string
-	Submit2      string
-	PwLabel      string
-	Placeholder4 string
-	Submit4      string
-	HintsLabel   string
-	ConnOK       string
-	ConnBad      string
+	Brand          string
+	LangSwitch     string
+	ProgressWord   string
+	LevelWord      string
+	GoalLabel      string
+	ConceptLabel   string
+	CheckLabel     string
+	Hint1Label     string
+	Hint2Label     string
+	Hint3Label     string
+	FlagUnlocked   string
+	FlagNote       string
+	CleanupTitle   string
+	CleanupBody    template.HTML
+	FooterProgress string
+	FooterReset    string
+	FooterResetCmd string
+	DoneTitle      string
+	DoneBody       template.HTML
+	L1Done         template.HTML
+	Question       string
+	Placeholder2   string
+	Submit2        string
+	PwLabel        string
+	Placeholder4   string
+	Submit4        string
+	HintsLabel     string
+	ConnOK         string
+	ConnBad        string
 }
 
 // currentLevel leitet aus Fortschritt und Verbindungszustand das anzuzeigende Level ab.
@@ -415,34 +457,35 @@ func render(w http.ResponseWriter, lang Lang, progress int, status providerStatu
 		Level:     level,
 		Mounted:   volumeMounted(),
 
-		Brand:        T(lang, "brand"),
-		LangSwitch:   T(lang, "lang.switch"),
-		ProgressWord: T(lang, "progress.label"),
-		LevelWord:    T(lang, "level.word"),
-		GoalLabel:    T(lang, "goal.label"),
-		ConceptLabel: T(lang, "concept.label"),
-		CheckLabel:   T(lang, "check.label"),
-		Hint1Label:   T(lang, "hint.1"),
-		Hint2Label:   T(lang, "hint.2"),
-		Hint3Label:   T(lang, "hint.3"),
-		FlagUnlocked: T(lang, "flag.unlocked"),
-		FlagNote:     T(lang, "flag.note"),
-		CleanupTitle: T(lang, "cleanup.title"),
-		CleanupBody:  TH(lang, "cleanup.body"),
-		WorkbookNote: TH(lang, "workbook.note"),
-		StuckNote:    TH(lang, "stuck.note"),
-		DoneTitle:    T(lang, "done.title"),
-		DoneBody:     TH(lang, "done.body"),
-		L1Done:       TH(lang, "l1.done"),
-		Question:     T(lang, "l2.question"),
-		Placeholder2: T(lang, "l2.placeholder"),
-		Submit2:      T(lang, "l2.submit"),
-		PwLabel:      T(lang, "l4.pwlabel"),
-		Placeholder4: T(lang, "l4.placeholder"),
-		Submit4:      T(lang, "l4.submit"),
-		HintsLabel:   T(lang, "hints.label"),
-		ConnOK:       T(lang, "conn.ok"),
-		ConnBad:      T(lang, "conn.bad"),
+		Brand:          T(lang, "brand"),
+		LangSwitch:     T(lang, "lang.switch"),
+		ProgressWord:   T(lang, "progress.label"),
+		LevelWord:      T(lang, "level.word"),
+		GoalLabel:      T(lang, "goal.label"),
+		ConceptLabel:   T(lang, "concept.label"),
+		CheckLabel:     T(lang, "check.label"),
+		Hint1Label:     T(lang, "hint.1"),
+		Hint2Label:     T(lang, "hint.2"),
+		Hint3Label:     T(lang, "hint.3"),
+		FlagUnlocked:   T(lang, "flag.unlocked"),
+		FlagNote:       T(lang, "flag.note"),
+		CleanupTitle:   T(lang, "cleanup.title"),
+		CleanupBody:    TH(lang, "cleanup.body"),
+		FooterProgress: T(lang, "footer.progress"),
+		FooterReset:    T(lang, "footer.reset"),
+		FooterResetCmd: T(lang, "footer.resetcmd"),
+		DoneTitle:      T(lang, "done.title"),
+		DoneBody:       TH(lang, "done.body"),
+		L1Done:         TH(lang, "l1.done"),
+		Question:       T(lang, "l2.question"),
+		Placeholder2:   T(lang, "l2.placeholder"),
+		Submit2:        T(lang, "l2.submit"),
+		PwLabel:        T(lang, "l4.pwlabel"),
+		Placeholder4:   T(lang, "l4.placeholder"),
+		Submit4:        T(lang, "l4.submit"),
+		HintsLabel:     T(lang, "hints.label"),
+		ConnOK:         T(lang, "conn.ok"),
+		ConnBad:        T(lang, "conn.bad"),
 	}
 
 	switch status {

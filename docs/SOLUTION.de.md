@@ -26,7 +26,7 @@
 ## Vorbereitung
 
 ```bash
-docker pull matixmedia/docker-ctf-main:latest
+docker pull matixmedia/docker-ctf:latest
 docker pull matixmedia/docker-ctf-data-provider:latest
 ```
 
@@ -37,7 +37,7 @@ docker pull matixmedia/docker-ctf-data-provider:latest
 ### Befehle
 
 ```bash
-docker run -d --name ctf-main matixmedia/docker-ctf-main:latest
+docker run -d --name ctf-main matixmedia/docker-ctf:latest
 docker logs ctf-main
 ```
 
@@ -70,7 +70,7 @@ map[8989/tcp:{}]
 docker stop ctf-main
 docker rm ctf-main
 
-docker run -d --name ctf-main -p 8989:8989 matixmedia/docker-ctf-main:latest
+docker run -d --name ctf-main -p 8989:8989 matixmedia/docker-ctf:latest
 ```
 
 Dann <http://localhost:8989> öffnen → **`FLAG{L1_P0RT_G3FUNDEN}`**
@@ -127,7 +127,7 @@ docker run -d --name data-provider-svc --network ctf-net \
   matixmedia/docker-ctf-data-provider:latest
 
 docker run -d --name ctf-main --network ctf-net -p 8989:8989 \
-  matixmedia/docker-ctf-main:latest
+  matixmedia/docker-ctf:latest
 ```
 
 Seite neu laden → grüner Kasten → **`FLAG{L3_N3TZW3RK_ST3HT}`**
@@ -163,7 +163,7 @@ docker rm ctf-main
 
 docker run -d --name ctf-main --network ctf-net -p 8989:8989 \
   -v $(pwd)/secrets:/secrets \
-  matixmedia/docker-ctf-main:latest
+  matixmedia/docker-ctf:latest
 
 cat secrets/password.txt
 ```

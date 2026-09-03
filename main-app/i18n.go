@@ -71,8 +71,9 @@ var translations = map[Lang]map[string]string{
 			mit demselben Namen neu startest, musst du den alten wegräumen. Sonst kommt
 			<em>„The container name is already in use"</em> — das ist kein Fehler von dir!`,
 
-		"workbook.note": "Alle Level stehen auch im Workbook: <code>docs/WORKBOOK.de.md</code>",
-		"stuck.note":    "Komplett verheddert? <code>bash scripts/ctf-reset.sh</code> räumt alles auf und du fängst bei Level 1 neu an.",
+		"footer.progress": "Dein Fortschritt wird als Cookie in diesem Browser gespeichert — nicht im Container. Ein privates Fenster fängt also wieder bei vorne an.",
+		"footer.reset":    "Komplett verheddert? Damit räumst du alles ab und fängst bei Level 1 neu an:",
+		"footer.resetcmd": "docker rm -f ctf-main data-provider-svc\ndocker network rm ctf-net",
 
 		// ---- Level 1 (bereits geschafft, wenn diese Seite lädt)
 		"l1.title": "Der geheime Port",
@@ -110,7 +111,9 @@ var translations = map[Lang]map[string]string{
 		// ---- Level 3
 		"l3.title": "Das Netzwerk",
 		"l3.goal": `Der Data-Provider muss laufen <strong>und</strong> ich muss ihn erreichen können.
-			Sorge dafür, dass wir beide im selben Docker-Netzwerk sind.`,
+			Sorge dafür, dass wir beide im selben Docker-Netzwerk sind.
+			<br><br>Sein Image findest du in der Docker Registry unter
+			<code>matixmedia/docker-ctf-data-provider:latest</code>.`,
 		"l3.concept": `Docker steckt alle Container standardmäßig in ein gemeinsames Netzwerk — aber
 			<strong>dort gibt es keine Namensauflösung</strong>. Container finden sich also nicht über
 			ihren Namen. Erst in einem <strong>selbst erstellten</strong> Netzwerk wird der
@@ -134,7 +137,7 @@ docker run -d --name data-provider-svc --network ctf-net \
   matixmedia/docker-ctf-data-provider:latest
 
 docker run -d --name ctf-main --network ctf-net -p 8989:8989 \
-  matixmedia/docker-ctf-main:latest</code></pre>
+  matixmedia/docker-ctf:latest</code></pre>
 			Danach diese Seite neu laden.`,
 		"l3.check": `Sobald es klappt, wird der rote Kasten hier oben grün und du bekommst die Flag.`,
 		"l3.diag.dns": `<strong>Ich kenne den Namen nicht.</strong> Der Name
@@ -166,7 +169,7 @@ docker rm ctf-main
 
 docker run -d --name ctf-main --network ctf-net -p 8989:8989 \
   -v $(pwd)/secrets:/secrets \
-  matixmedia/docker-ctf-main:latest
+  matixmedia/docker-ctf:latest
 
 cat secrets/password.txt</code></pre>
 			Der letzte Befehl zeigt dir das Passwort. Trage es unten ein.`,
@@ -234,8 +237,9 @@ cat secrets/password.txt</code></pre>
 			with the same name again, you have to remove the old one. Otherwise you get
 			<em>"The container name is already in use"</em> — that is not your mistake!`,
 
-		"workbook.note": "Every level is also in the workbook: <code>docs/WORKBOOK.en.md</code>",
-		"stuck.note":    "Completely tangled up? <code>bash scripts/ctf-reset.sh</code> cleans everything and you restart at level 1.",
+		"footer.progress": "Your progress is stored as a cookie in this browser — not in the container. A private window therefore starts over.",
+		"footer.reset":    "Completely tangled up? This clears everything and you restart at level 1:",
+		"footer.resetcmd": "docker rm -f ctf-main data-provider-svc\ndocker network rm ctf-net",
 
 		// ---- Level 1
 		"l1.title": "The Secret Port",
@@ -273,7 +277,9 @@ cat secrets/password.txt</code></pre>
 		// ---- Level 3
 		"l3.title": "The Network",
 		"l3.goal": `The data provider has to be running <strong>and</strong> I have to be able to reach
-			it. Make sure we are both on the same Docker network.`,
+			it. Make sure we are both on the same Docker network.
+			<br><br>You will find its image in the Docker registry as
+			<code>matixmedia/docker-ctf-data-provider:latest</code>.`,
 		"l3.concept": `By default Docker puts all containers on one shared network — but
 			<strong>there is no name resolution there</strong>. So containers cannot find each other by
 			name. Only on a <strong>self-created</strong> network does a container's <code>--name</code>
@@ -297,7 +303,7 @@ docker run -d --name data-provider-svc --network ctf-net \
   matixmedia/docker-ctf-data-provider:latest
 
 docker run -d --name ctf-main --network ctf-net -p 8989:8989 \
-  matixmedia/docker-ctf-main:latest</code></pre>
+  matixmedia/docker-ctf:latest</code></pre>
 			Then reload this page.`,
 		"l3.check": `As soon as it works, the red box above turns green and you get the flag.`,
 		"l3.diag.dns": `<strong>I do not know that name.</strong> The name
@@ -327,7 +333,7 @@ docker rm ctf-main
 
 docker run -d --name ctf-main --network ctf-net -p 8989:8989 \
   -v $(pwd)/secrets:/secrets \
-  matixmedia/docker-ctf-main:latest
+  matixmedia/docker-ctf:latest
 
 cat secrets/password.txt</code></pre>
 			The last command shows you the password. Enter it below.`,

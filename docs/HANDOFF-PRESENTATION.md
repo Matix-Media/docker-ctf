@@ -111,17 +111,24 @@ deck, not merely out of order. Three new slides are already written for you in
 are drafted in the deck's existing voice and structure (**Zweck** / **Beispiel** bullets).
 Review them, restyle to the template, insert **before** the CTF slide.
 
-### 5.2 Wrong image name on the CTF slide 🔴
+### 5.2 CTF slide needs updating (but the image name is CORRECT) 🟠
 
 PDF page 41 ("Selber probieren!") says:
 
 > Docker Image ziehen: `matixmedia/docker-ctf`
 
-**That image does not exist.** Anyone following the slide gets `pull access denied` and
-cannot start at all. The real images are `matixmedia/docker-ctf-main` and
-`matixmedia/docker-ctf-data-provider`. Corrected slide text is in
-`docs/SLIDES-ADDENDUM.md` §"Korrektur 1" — it also needs updating because the CTF now has
-five levels with five flags, not one.
+**That name is right — do not change it.** `matixmedia/docker-ctf` is the main image
+and exists on Docker Hub. (An earlier draft of this handoff claimed it was wrong; that
+was a mistake. The repo's old `INSTRUCTIONS.md` named `docker-ctf-main`, which does *not*
+exist — the repo was wrong, not the slide.)
+
+What *does* need updating: the CTF now has **five levels with five flags**, and players
+should be told to read the container logs. Replacement text is in
+`docs/SLIDES-ADDENDUM.md` §"Anpassung 1".
+
+> ⚠️ **Do not put a link to the source repository on the slide.** Players are given only
+> the image name, by design: the repo contains the full solution, and the second image is
+> meant to be discovered in-game.
 
 ### 5.3 Ordering 🟠
 

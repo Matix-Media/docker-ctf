@@ -14,7 +14,7 @@ PUSH="${PUSH:-1}"
 
 cd "$(dirname "$0")/.."
 
-MAIN="$REGISTRY/docker-ctf-main"
+MAIN="$REGISTRY/docker-ctf"
 PROV="$REGISTRY/docker-ctf-data-provider"
 
 echo "==> Baue $MAIN:$VERSION"

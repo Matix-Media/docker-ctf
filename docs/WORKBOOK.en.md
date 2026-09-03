@@ -8,6 +8,10 @@ unlocks a **flag**.
 > **You do not have to write any code.** You type commands into a terminal and check in the
 > browser what happened.
 
+> 📄 **This workbook is optional.** The container explains everything itself — first in its
+> logs, then from level 2 on a web page. The workbook is for taking notes, and because
+> level 0 (the warm-up) is not part of the container.
+
 ## How to use this workbook
 
 - Every grey box is a command. **You may copy and paste it.**
@@ -125,7 +129,7 @@ easily 200 lines of it. With `--format` you pull out exactly **one** value.
 Start the container, read the logs, find the port and publish it.
 
 ```bash
-docker run -d --name ctf-main matixmedia/docker-ctf-main:latest
+docker run -d --name ctf-main matixmedia/docker-ctf:latest
 ```
 
 ```bash
@@ -169,7 +173,7 @@ Output: `map[8989/tcp:{}]` → the port is **8989**.
 docker stop ctf-main
 docker rm ctf-main
 
-docker run -d --name ctf-main -p 8989:8989 matixmedia/docker-ctf-main:latest
+docker run -d --name ctf-main -p 8989:8989 matixmedia/docker-ctf:latest
 ```
 
 Then open it in your browser: <http://localhost:8989>
@@ -313,7 +317,7 @@ docker run -d --name data-provider-svc --network ctf-net \
   matixmedia/docker-ctf-data-provider:latest
 
 docker run -d --name ctf-main --network ctf-net -p 8989:8989 \
-  matixmedia/docker-ctf-main:latest
+  matixmedia/docker-ctf:latest
 ```
 
 Then reload <http://localhost:8989>.
@@ -387,7 +391,7 @@ docker rm ctf-main
 
 docker run -d --name ctf-main --network ctf-net -p 8989:8989 \
   -v $(pwd)/secrets:/secrets \
-  matixmedia/docker-ctf-main:latest
+  matixmedia/docker-ctf:latest
 
 cat secrets/password.txt
 ```
@@ -486,17 +490,20 @@ Docker looks like day to day.
 ### Clean up
 
 ```bash
-bash scripts/ctf-reset.sh
+docker rm -f ctf-main data-provider-svc
+docker network rm ctf-net
 ```
 
 ### When nothing works any more
 
 | Problem | Solution |
 |---|---|
-| "container name is already in use" | `docker stop NAME && docker rm NAME` |
-| I do not know what is running | `bash scripts/ctf-status.sh` |
-| Everything is broken, start over | `bash scripts/ctf-reset.sh` |
+| "container name is already in use" | `docker rm -f NAME` |
+| I do not know what is running | `docker ps -a` |
+| Which port is open? | `docker port ctf-main` |
+| Which network am I on? | `docker inspect --format '{{.NetworkSettings.Networks}}' ctf-main` |
+| Everything is broken, start over | the two commands under "Clean up", then continue at level 1 |
 | Page does not load | Is the container running? `docker ps`. Port published? `docker port ctf-main` |
 | Progress bar looks wrong | Clear the cookies for `localhost:8989` or use a private window |
 
-📄 Cheat sheet with all commands: [CHEATSHEET.md](CHEATSHEET.md)
+

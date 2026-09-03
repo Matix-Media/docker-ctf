@@ -9,7 +9,7 @@ Alles, was du zum Durchführen brauchst. Für den Otto Linux-Bootcamp-Workshop.
 | Problem | Ursache | Behoben durch |
 |---|---|---|
 | „viel zu schwer" | Das CTF verlangte `docker inspect`, `docker network` und `-v` — **keins davon kam in der Präsentation vor** | 3 neue Folien: [SLIDES-ADDENDUM.md](SLIDES-ADDENDUM.md) |
-| Manche kamen gar nicht erst los | Folie 42 und README nannten `matixmedia/docker-ctf` — dieses Image existiert nicht | Korrigierte Namen überall |
+| Widersprüchliche Image-Namen im Repo | Das alte `INSTRUCTIONS.md` nannte `docker-ctf-main`; dieses Image existiert **nicht**. Richtig ist `matixmedia/docker-ctf` (so wie auf Folie 42) | Einheitlich `matixmedia/docker-ctf` |
 | Nach 60 min nichts vorzuweisen | Eine einzige Flag ganz am Ende | 5 Level mit je einer eigenen Flag |
 | `docker exec -it ... bash` schlug fehl | Images waren `FROM scratch` → keine Shell, obwohl Folie 39 genau das lehrt | Images basieren jetzt auf Alpine |
 | „Ich weiß nicht, was ich falsch mache" | Jeder Verbindungsfehler zeigte denselben Text | Seite unterscheidet DNS-Fehler von „Container läuft nicht" |
@@ -17,11 +17,30 @@ Alles, was du zum Durchführen brauchst. Für den Otto Linux-Bootcamp-Workshop.
 
 ---
 
+## 🔑 Grundprinzip: Spieler bekommen nur den Image-Namen
+
+Die Teilnehmer erfahren **ausschließlich**:
+
+```
+matixmedia/docker-ctf
+```
+
+Kein Repo-Link, keine Anleitung, kein zweiter Image-Name. Alles Weitere steht in den
+Container-Logs (Level 1) und danach in der Weboberfläche (Level 2–5). Das ist Absicht:
+
+- Im Repo liegt die **Komplettlösung**.
+- Das zweite Image sollen sie in **Level 3 selbst entdecken**.
+
+Wenn du das Workbook austeilen willst: als **PDF oder Ausdruck**, nicht als Repo-Link.
+Nötig ist es nicht — das CTF ist ohne lösbar.
+
+---
+
 ## ✅ Pre-Flight-Check (am Vortag!)
 
 ```bash
 # 1. Images sind aktuell und öffentlich erreichbar
-docker pull matixmedia/docker-ctf-main:latest
+docker pull matixmedia/docker-ctf:latest
 docker pull matixmedia/docker-ctf-data-provider:latest
 
 # 2. Kompletter Durchlauf auf einer frischen VM
@@ -37,9 +56,11 @@ bash scripts/ctf-reset.sh
 - [ ] Folien umsortiert: **kompletter Docker-Teil vor** dem CTF
 - [ ] Die drei neuen Folien aus [SLIDES-ADDENDUM.md](SLIDES-ADDENDUM.md) sind eingebaut
 - [ ] Image-Name auf der CTF-Folie korrigiert
-- [ ] **Teilnehmer lassen die Images vorab ziehen** — 20 Leute, die gleichzeitig pullen,
-      sind eine Wartezeit von mehreren Minuten. Am besten schon in der Pause davor.
-- [ ] Repo-Link steht an der Wand/im Chat: `github.com/Matix-Media/docker-ctf`
+- [ ] **Teilnehmer lassen das Image vorab ziehen** (`docker pull matixmedia/docker-ctf`) —
+      20 Leute, die gleichzeitig pullen, sind mehrere Minuten Wartezeit. Am besten schon
+      in der Pause davor. Das zweite Image ziehen sie später selbst in Level 3.
+- [ ] **Kein Repo-Link** an der Wand oder im Chat — dort steht die Lösung
+- [ ] Image-Name steht sichtbar im Chat: `matixmedia/docker-ctf`
 - [ ] Du hast [SOLUTION.de.md](SOLUTION.de.md) offen
 
 ---

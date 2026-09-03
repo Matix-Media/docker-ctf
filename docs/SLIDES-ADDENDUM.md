@@ -22,26 +22,25 @@ Teilnehmer gegen ein Werkzeug, das sie nie gesehen haben.
 
 ---
 
-## Korrektur 1 — Folie 42 „Selber probieren!"
+## Anpassung 1 — Folie 42 „Selber probieren!"
 
-**Falsch (aktuell):**
+Der Image-Name auf der Folie ist **richtig**: `matixmedia/docker-ctf` ist das
+Hauptimage und existiert genau so auf Docker Hub. Bitte **nicht** ändern.
 
-> Docker Image ziehen: `matixmedia/docker-ctf`
+Angepasst werden muss nur der Rest, weil das CTF jetzt fünf Level mit je einer
+eigenen Flag hat:
 
-Dieses Image existiert nicht. Wer das eintippt, bekommt einen `pull access denied`-Fehler
-und kommt gar nicht erst los.
-
-**Richtig:**
-
-> Docker Images ziehen:
-> ```
-> docker pull matixmedia/docker-ctf-main:latest
-> docker pull matixmedia/docker-ctf-data-provider:latest
-> ```
-> Anleitung: `github.com/Matix-Media/docker-ctf` → `docs/WORKBOOK.de.md`
+> **Capture the Flag**
+> - Docker Image ziehen: `matixmedia/docker-ctf`
+> - Container starten — **die Logs lesen!** Dort steht, wie es weitergeht.
+> - Fünf Level, fünf Flags.
 >
-> Es gibt **fünf Level mit je einer eigenen Flag**. Postet eure Flags in Teams —
-> dann sehen wir, wo ihr steht, und ihr verratet den anderen nichts.
+> Postet **jede Flag**, die ihr findet, in Teams. Dann sehen wir, wie weit ihr
+> seid — und ihr verratet den anderen nichts.
+
+> ⚠️ **Wichtig:** Auf der Folie darf **kein Link zum Quellcode-Repository**
+> stehen. Die Spieler bekommen bewusst nur den Image-Namen. Im Repo liegt die
+> Komplettlösung, und das zweite Image sollen sie selbst im Spiel entdecken.
 
 ## Korrektur 2 — Folie 17 „Good 2 Know"
 

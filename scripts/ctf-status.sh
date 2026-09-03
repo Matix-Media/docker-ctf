@@ -71,7 +71,7 @@ echo "----------------------------------------------"
 
 if ! exists ctf-main; then
   echo "  Level 1: Starte den Hauptcontainer und lies die Logs."
-  echo "    docker run -d --name ctf-main matixmedia/docker-ctf-main:latest"
+  echo "    docker run -d --name ctf-main matixmedia/docker-ctf:latest"
   echo "    docker logs ctf-main"
 elif ! running ctf-main; then
   echo "  ctf-main ist gestoppt. Aufraeumen und neu starten:"
@@ -79,7 +79,7 @@ elif ! running ctf-main; then
 elif ! docker port ctf-main 2>/dev/null | grep -q 8989; then
   echo "  Level 1: Port 8989 ist noch nicht veroeffentlicht."
   echo "    docker stop ctf-main && docker rm ctf-main"
-  echo "    docker run -d --name ctf-main -p 8989:8989 matixmedia/docker-ctf-main:latest"
+  echo "    docker run -d --name ctf-main -p 8989:8989 matixmedia/docker-ctf:latest"
 elif ! running data-provider-svc; then
   echo "  Level 2/3: Der Data-Provider laeuft noch nicht."
   if ! docker network ls --format '{{.Name}}' | grep -qx ctf-net; then
@@ -91,12 +91,12 @@ elif ! docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k
   echo "  Level 3: ctf-main ist nicht im Netzwerk ctf-net. Beide Container muessen drin sein!"
   echo "    docker stop ctf-main && docker rm ctf-main"
   echo "    docker run -d --name ctf-main --network ctf-net -p 8989:8989 \\"
-  echo "      matixmedia/docker-ctf-main:latest"
+  echo "      matixmedia/docker-ctf:latest"
 elif [ ! -f ./secrets/password.txt ]; then
   echo "  Level 4: Der Ordner /secrets ist noch nicht gemountet."
   echo "    docker stop ctf-main && docker rm ctf-main"
   echo "    docker run -d --name ctf-main --network ctf-net -p 8989:8989 \\"
-  echo "      -v \$(pwd)/secrets:/secrets matixmedia/docker-ctf-main:latest"
+  echo "      -v \$(pwd)/secrets:/secrets matixmedia/docker-ctf:latest"
 else
   echo "  Level 5: Alles steht! Hol dir die Flagge:"
   echo "    docker exec -it ctf-main /app/app --show-flag"

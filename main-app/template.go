@@ -200,8 +200,9 @@ const indexTemplate = `
 </section>
 
 <footer>
-  <p>{{.WorkbookNote}}</p>
-  <p>{{.StuckNote}}</p>
+  <p>{{.FooterProgress}}</p>
+  <p>{{.FooterReset}}</p>
+  <pre><code>{{.FooterResetCmd}}</code></pre>
 </footer>
 
 </body>

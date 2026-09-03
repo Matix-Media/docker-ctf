@@ -22,8 +22,7 @@ COPY --from=builder /go/bin/app .
 
 # Metadaten fuer Level 2: dieses Label muessen die Teilnehmer finden.
 LABEL "ctf.data-provider.host"="data-provider-svc"
-LABEL "org.opencontainers.image.title"="Docker CTF - Main"
-LABEL "org.opencontainers.image.source"="https://github.com/Matix-Media/docker-ctf"
+LABEL "org.opencontainers.image.title"="Docker CTF"
 
 EXPOSE 8989
 

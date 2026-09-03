@@ -18,7 +18,7 @@ services:
 
   ctf-main:
     build: ./main-app
-    image: matixmedia/docker-ctf-main:latest
+    image: matixmedia/docker-ctf:latest
     pull_policy: build
     container_name: ctf-main
     depends_on: [data-provider-svc]

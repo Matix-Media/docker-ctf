@@ -17,7 +17,6 @@ WORKDIR /app
 COPY --from=builder /go/bin/dataprovider .
 
 LABEL "org.opencontainers.image.title"="Docker CTF - Data Provider"
-LABEL "org.opencontainers.image.source"="https://github.com/Matix-Media/docker-ctf"
 
 EXPOSE 9090
 
