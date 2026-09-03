@@ -4,38 +4,60 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
-var (
-	correctPassword = "SUPER_GEHEIM_123"
-	// Aktualisierter Hinweis für den letzten Schritt.
-	finalHint       = "FAST GESCHAFFT: Um die Flagge zu sehen, musst du den Hauptcontainer anweisen, sie direkt auszugeben. Führe im Hauptcontainer den Befehl '/app/app --show-flag' aus."
-)
+const correctPassword = "SUPER_GEHEIM_123"
+
+// Antworten in beiden Sprachen. Die Sprache kommt von der Main-App mit.
+var messages = map[string]map[string]string{
+	"de": {
+		"hint": "FAST GESCHAFFT: Fuehre im Hauptcontainer 'docker exec -it ctf-main /app/app --show-flag' aus.",
+		"bad":  "Falsches Passwort! Schau nochmal in secrets/password.txt.",
+	},
+	"en": {
+		"hint": "ALMOST THERE: run 'docker exec -it ctf-main /app/app --show-flag' on the main container.",
+		"bad":  "Wrong password! Check secrets/password.txt again.",
+	},
+}
+
+func msg(lang, key string) string {
+	if m, ok := messages[lang]; ok {
+		if v, ok := m[key]; ok {
+			return v
+		}
+	}
+	return messages["de"][key]
+}
 
 func main() {
-	// Ein einfacher Ping-Endpunkt, um die Erreichbarkeit zu testen
+	// Erreichbarkeitstest fuer die Main-App (Level 3).
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "pong")
 	})
 
-	// Ein Endpunkt, der das Passwort überprüft
+	// Passwortpruefung (Level 4).
 	http.HandleFunc("/verify", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Nur POST-Anfragen erlaubt", http.StatusMethodNotAllowed)
+			http.Error(w, "Nur POST-Anfragen erlaubt / POST only", http.StatusMethodNotAllowed)
 			return
 		}
 
-		submittedPassword := r.FormValue("password")
-		if submittedPassword == correctPassword {
-			fmt.Fprint(w, finalHint)
-		} else {
-			http.Error(w, "Falsches Passwort!", http.StatusUnauthorized)
+		lang := r.FormValue("lang")
+		if lang != "en" {
+			lang = "de"
 		}
+
+		if strings.TrimSpace(r.FormValue("password")) == correctPassword {
+			fmt.Fprint(w, msg(lang, "hint"))
+			return
+		}
+		http.Error(w, msg(lang, "bad"), http.StatusUnauthorized)
 	})
 
-	log.Println("Data-Provider Service startet auf Port 9090...")
+	log.Println("Data-Provider startet auf Port 9090 / starting on port 9090...")
 	if err := http.ListenAndServe(":9090", nil); err != nil {
-		log.Fatalf("Konnte den Data-Provider nicht starten: %s\n", err)
+		log.Fatalf("Konnte den Data-Provider nicht starten / could not start: %s\n", err)
 	}
 }
