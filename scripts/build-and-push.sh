@@ -43,8 +43,14 @@ if ! docker buildx inspect "$BUILDER" >/dev/null 2>&1; then
 fi
 docker buildx inspect --builder "$BUILDER" --bootstrap >/dev/null
 
-echo "==> Angemeldet bei Docker Hub? (docker login noetig)"
-docker login
+# Login pruefen statt blind 'docker login' aufzurufen - sonst haengt das Skript
+# in nicht-interaktiven Umgebungen (CI, Editor-Terminals) einfach fest.
+if ! docker system info 2>/dev/null | grep -qi "^ Username:"; then
+  echo "FEHLER: nicht bei Docker Hub angemeldet."
+  echo "        Bitte zuerst ausfuehren:  docker login"
+  exit 1
+fi
+echo "==> Angemeldet als: $(docker system info 2>/dev/null | sed -n 's/^ Username: //p')"
 
 echo "==> Baue und pushe $MAIN  ($PLATFORMS)"
 docker buildx build --builder "$BUILDER" \

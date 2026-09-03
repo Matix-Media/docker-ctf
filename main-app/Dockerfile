@@ -1,6 +1,12 @@
 # === Build Stage ===
 # Kompiliert die Go-Anwendung / compiles the Go application
-FROM golang:1.24-alpine AS builder
+# --platform=$BUILDPLATFORM: der Build laeuft immer nativ auf der Maschine des
+# Bauenden. Go cross-kompiliert selbst, wir brauchen also keine QEMU-Emulation.
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+
+# Von buildx gesetzt, wenn --platform benutzt wird.
+ARG TARGETOS=linux
+ARG TARGETARCH
 
 WORKDIR /src
 
@@ -9,7 +15,7 @@ COPY go.mod go.sum* ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/app .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /go/bin/app .
 
 # === Final Stage ===
 # Alpine statt scratch: die Teilnehmer sollen mit 'docker exec -it ctf-main sh'
