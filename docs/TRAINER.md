@@ -200,6 +200,22 @@ REGISTRY=deinname VERSION=2026 bash scripts/build-and-push.sh
 Die Images werden zusätzlich versioniert getaggt (`:2025`), damit ein altes `latest` auf
 einem Laptop den Workshop nicht sabotiert.
 
+> ⚠️ **Multi-Arch ist Pflicht.** Auf einem Apple-Silicon-Mac erzeugt ein normales
+> `docker build` **nur** `linux/arm64`. Die Teilnehmer-VMs sind aber `linux/amd64` — die
+> Images liessen sich dort nicht starten. `scripts/build-and-push.sh` benutzt deshalb
+> `docker buildx` und veröffentlicht beide Plattformen. Nach dem Push einmal gegenprüfen:
+>
+> ```bash
+> docker manifest inspect matixmedia/docker-ctf:latest | grep architecture
+> ```
+>
+> Es müssen `amd64` **und** `arm64` auftauchen.
+
+> ⚠️ **Lokal testen:** Solange die neuen Images noch nicht gepusht sind, zieht ein
+> `docker pull` (und auch `docker run` ohne lokales Image) die **alte** Version von Docker
+> Hub und überschreibt damit deinen lokalen Build. Zum Testen also immer erst
+> `PUSH=0 bash scripts/build-and-push.sh` und danach **kein** `docker pull`.
+
 ---
 
 ## 📁 Was liegt wo

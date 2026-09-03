@@ -401,6 +401,7 @@ type pageData struct {
 	HintsLabel     string
 	ConnOK         string
 	ConnBad        string
+	ConnTitle      string
 }
 
 // currentLevel leitet aus Fortschritt und Verbindungszustand das anzuzeigende Level ab.
@@ -488,11 +489,22 @@ func render(w http.ResponseWriter, lang Lang, progress int, status providerStatu
 		ConnBad:        T(lang, "conn.bad"),
 	}
 
-	switch status {
-	case providerDNS:
-		data.Diagnosis = TH(lang, "l3.diag.dns")
-	case providerRefused:
-		data.Diagnosis = TH(lang, "l3.diag.refused")
+	// Der Hostname des Data-Providers IST die Loesung von Level 2. Vor Level 3
+	// darf ihn also weder die Statusbox noch die Diagnose noch der Aufraeum-
+	// Befehl im Footer verraten.
+	revealProvider := level >= 3
+	if revealProvider {
+		data.ConnTitle = providerLabelValue
+		switch status {
+		case providerDNS:
+			data.Diagnosis = TH(lang, "l3.diag.dns")
+		case providerRefused:
+			data.Diagnosis = TH(lang, "l3.diag.refused")
+		}
+	} else {
+		data.ConnTitle = T(lang, "conn.anon.title")
+		data.ConnBad = T(lang, "conn.anon.bad")
+		data.FooterResetCmd = T(lang, "footer.resetcmd.l2")
 	}
 
 	prefix := fmt.Sprintf("l%d.", level)

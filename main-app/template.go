@@ -139,10 +139,10 @@ const indexTemplate = `
 
 <section class="status {{if .Connected}}ok{{else}}bad{{end}}">
   {{if .Connected}}
-    <strong>✅ data-provider-svc</strong>
+    <strong>✅ {{.ConnTitle}}</strong>
     <div>{{.ConnOK}}</div>
   {{else}}
-    <strong>❌ data-provider-svc</strong>
+    <strong>❌ {{.ConnTitle}}</strong>
     <div>{{.ConnBad}}</div>
     <div>{{.Diagnosis}}</div>
   {{end}}
