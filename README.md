@@ -60,6 +60,7 @@ allen vorne durchmacht. Siehe Trainer-Guide.
 | **[docs/TRAINER.md](docs/TRAINER.md)** | **Hier anfangen.** Ablauf, Timing, Pre-Flight-Check, Fehlerbilder |
 | [docs/SOLUTION.de.md](docs/SOLUTION.de.md) · [en](docs/SOLUTION.en.md) | Komplettlösung mit Erklärungen |
 | [docs/SLIDES-ADDENDUM.md](docs/SLIDES-ADDENDUM.md) | Fehlende Folien für die Präsentation |
+| [docs/HANDOFF-PRESENTATION.md](docs/HANDOFF-PRESENTATION.md) · [Teil 2](docs/HANDOFF-PRESENTATION-HANDSON.md) | Briefing für die Überarbeitung der Präsentation |
 | [docs/CHEATSHEET.md](docs/CHEATSHEET.md) | Spickzettel, zweisprachig |
 | [docs/WORKBOOK.de.md](docs/WORKBOOK.de.md) · [en](docs/WORKBOOK.en.md) | Optionales Arbeitsheft (siehe unten) |
 

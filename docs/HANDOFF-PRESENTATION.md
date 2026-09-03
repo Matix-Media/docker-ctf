@@ -10,6 +10,10 @@
 
 ---
 
+> 📎 **Companion document:** [HANDOFF-PRESENTATION-HANDSON.md](HANDOFF-PRESENTATION-HANDSON.md)
+> covers weaving the hands-on warm-up into the Docker section — read it after §7 here.
+> It supersedes the "separate Level 0 block" idea.
+
 ## 1. Your task
 
 Improve the slide deck used in the Otto Linux-Bootcamp so that it actually prepares the
